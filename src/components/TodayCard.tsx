@@ -4,6 +4,9 @@ import { useState, useCallback } from "react";
 import AudioPlayer from "./AudioPlayer";
 import FeedbackButtons from "./FeedbackButtons";
 import SyncedText, { collectKeywords, buildKeywordInfo } from "./SyncedText";
+import VoiceSelector from "./VoiceSelector";
+import { useVoice } from "@/lib/voice-context";
+import { incrementUsage } from "@/lib/usage-tracker";
 import type { ContentListItem } from "@/types/content";
 import type { TimestampEntry } from "@/lib/volcengine-tts";
 
@@ -21,6 +24,7 @@ export default function TodayCard({
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const { currentVoice } = useVoice();
 
   const item = items[currentIndex];
   if (!item) return null;
@@ -42,6 +46,8 @@ export default function TodayCard({
       setDuration(0);
       setShowSupport(false);
       setCurrentIndex(idx);
+      // Track usage for soft login prompt
+      incrementUsage();
     },
     [syncedAudio],
   );
@@ -69,6 +75,8 @@ export default function TodayCard({
       setDuration(audioEl.duration || 0);
       setIsPlaying(!audioEl.paused);
       setCurrentTime(audioEl.currentTime);
+      // Track usage for soft login prompt
+      incrementUsage();
 
       const onTime = () => setCurrentTime(audioEl.currentTime);
       const onPlay = () => setIsPlaying(true);
@@ -149,6 +157,7 @@ export default function TodayCard({
             <span className="text-[10px] text-[#C9C8C2] tabular-nums">
               {currentIndex + 1}/{items.length}
             </span>
+            <VoiceSelector />
             {supportKws.length > 0 && (
               <button
                 onClick={() => setShowSupport(!showSupport)}
@@ -204,6 +213,7 @@ export default function TodayCard({
           <div className="flex items-center gap-4">
             <AudioPlayer
               contentId={item.id}
+              speaker={currentVoice.id}
               onReady={handleAudioReady}
               onEnded={handleAudioEnded}
             />

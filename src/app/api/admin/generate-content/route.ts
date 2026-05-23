@@ -6,9 +6,10 @@ import { contents } from "../../../../../drizzle/schema";
 
 export async function POST(request: Request) {
   try {
-    // Basic admin protection
+    // Auth via middleware (JWT cookie) or legacy admin-secret header
+    const userId = request.headers.get("x-user-id");
     const adminSecret = request.headers.get("x-admin-secret");
-    if (!adminSecret || adminSecret !== process.env.ADMIN_SECRET) {
+    if (!userId && (!adminSecret || adminSecret !== process.env.ADMIN_SECRET)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

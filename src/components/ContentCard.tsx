@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import AudioPlayer from "./AudioPlayer";
 import FeedbackButtons from "./FeedbackButtons";
 import SyncedText, { collectKeywords, buildKeywordInfo } from "./SyncedText";
+import { useVoice } from "@/lib/voice-context";
 import type { ContentListItem } from "@/types/content";
 import type { TimestampEntry } from "@/lib/volcengine-tts";
 
@@ -11,6 +12,7 @@ export default function ContentCard({ item }: { item: ContentListItem }) {
   const [showSupport, setShowSupport] = useState(false);
   const [syncedAudio, setSyncedAudio] = useState<HTMLAudioElement | null>(null);
   const [timestamps, setTimestamps] = useState<TimestampEntry[] | null>(null);
+  const { currentVoice } = useVoice();
 
   const mainKw = item.mainKeyword as {
     word: string; meaning: string; example?: string; ipa?: string; partOfSpeech?: string;
@@ -87,6 +89,7 @@ export default function ContentCard({ item }: { item: ContentListItem }) {
         <AudioPlayer
           contentId={item.id}
           size="sm"
+          speaker={currentVoice.id}
           onReady={handleAudioReady}
           onEnded={handleAudioEnded}
         />

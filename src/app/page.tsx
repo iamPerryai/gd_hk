@@ -6,6 +6,7 @@ import TodayCard from "@/components/TodayCard";
 import SceneFilter from "@/components/SceneFilter";
 import CardSwiper from "@/components/CardSwiper";
 import Footer from "@/components/Footer";
+import LoginPrompt from "@/components/LoginPrompt";
 import type { Scene } from "@/types/content";
 
 export const dynamic = "force-dynamic";
@@ -84,6 +85,9 @@ export default async function HomePage({
       )}
 
       <Footer />
+
+      {/* Soft login prompt after some usage */}
+      <LoginPrompt />
     </div>
   );
 }

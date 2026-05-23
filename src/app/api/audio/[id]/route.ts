@@ -8,10 +8,12 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 30; // 30s timeout for TTS
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const { searchParams } = new URL(request.url);
+  const speaker = searchParams.get("speaker") || undefined;
 
   try {
     // Fetch content from DB
@@ -29,6 +31,7 @@ export async function GET(
     // Real-time TTS with timestamps
     const { audioBuffer, timestamps } = await synthesizeSpeech({
       text: content.cantoneseText,
+      speaker,
     });
 
     const headers: Record<string, string> = {

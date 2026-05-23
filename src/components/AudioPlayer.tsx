@@ -6,6 +6,7 @@ import type { TimestampEntry } from "@/lib/volcengine-tts";
 interface AudioPlayerProps {
   contentId: string;
   size?: "sm" | "md";
+  speaker?: string;
   /** Callback when audio is loaded with timestamps for synced text */
   onReady?: (audioEl: HTMLAudioElement, timestamps: TimestampEntry[]) => void;
   /** Callback when playback ends */
@@ -15,6 +16,7 @@ interface AudioPlayerProps {
 export default function AudioPlayer({
   contentId,
   size = "md",
+  speaker,
   onReady,
   onEnded,
 }: AudioPlayerProps) {
@@ -33,7 +35,10 @@ export default function AudioPlayer({
       try {
         setStatus("loading");
 
-        const resp = await fetch(`/api/audio/${contentId}`);
+        const url = speaker
+          ? `/api/audio/${contentId}?speaker=${encodeURIComponent(speaker)}`
+          : `/api/audio/${contentId}`;
+        const resp = await fetch(url);
         if (!resp.ok || cancelled) {
           if (!cancelled) setStatus("idle");
           return;
@@ -107,7 +112,7 @@ export default function AudioPlayer({
       }
       timestampsRef.current = null;
     };
-  }, [contentId]);
+  }, [contentId, speaker]);
 
   // Click handler: everything synchronous so browser sees a user gesture
   const handleClick = useCallback(() => {

@@ -15,22 +15,26 @@
     "generate:audio": "tsx scripts/generate-audio.ts"
   },
   "dependencies": {
+    "@marsidev/react-turnstile": "^1.5.2",
+    "@neondatabase/serverless": "^0.10.4",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^16.4.0",
+    "drizzle-kit": "^0.30.6",
+    "drizzle-orm": "^0.39.3",
+    "jose": "^6.2.3",
     "next": "^15.2.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "@neondatabase/serverless": "^0.10.4",
-    "drizzle-orm": "^0.39.3",
-    "drizzle-kit": "^0.30.6",
-    "dotenv": "^16.4.0"
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "typescript": "^5.7.0",
-    "tailwindcss": "^4.0.0",
-    "@tailwindcss/postcss": "^4.0.0",
     "postcss": "^8.5.0",
-    "tsx": "^4.19.0"
+    "tailwindcss": "^4.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
   }
 }
