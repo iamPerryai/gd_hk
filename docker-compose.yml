@@ -6,6 +6,7 @@ services:
     ports:
       - "8080:3000"
     environment:
+      - HOSTNAME=0.0.0.0
       - DATABASE_URL=${DATABASE_URL}
       - KIMI_API_KEY=${KIMI_API_KEY}
       - KIMI_BASE_URL=${KIMI_BASE_URL:-https://api.moonshot.cn/v1}
