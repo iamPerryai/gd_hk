@@ -21,10 +21,9 @@ RUN adduser --system --uid 1001 nextjs
 # Copy standalone output
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
 
-# Ensure audio directory exists
-RUN mkdir -p /app/public/audio && chown -R nextjs:nodejs /app/public/audio
+# Create public dir (not in git — only .gitignored audio files exist there)
+RUN mkdir -p /app/public/audio && chown -R nextjs:nodejs /app/public
 
 USER nextjs
 EXPOSE 3000
