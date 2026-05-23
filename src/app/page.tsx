@@ -28,7 +28,10 @@ export default async function HomePage({
     .where(where)
     .orderBy(asc(contents.sortOrder));
 
-  const todayItem = allItems.find((item) => item.isToday) || allItems[0] || null;
+  const todayIndex = Math.max(
+    0,
+    allItems.findIndex((item) => item.isToday),
+  );
 
   const filteredItems = scene
     ? allItems.filter((item) => item.scene === scene)
@@ -39,7 +42,9 @@ export default async function HomePage({
       <Header />
 
       {/* 今日学习卡片 */}
-      {todayItem && <TodayCard item={todayItem} />}
+      {allItems.length > 0 && (
+        <TodayCard items={allItems} startIndex={todayIndex} />
+      )}
 
       {/* 场景筛选 + 标题 */}
       <div className="mt-8 flex items-baseline justify-between">
