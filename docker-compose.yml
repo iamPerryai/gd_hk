@@ -1,0 +1,23 @@
+services:
+  app:
+    build: .
+    container_name: hk-office-learning
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - KIMI_API_KEY=${KIMI_API_KEY}
+      - KIMI_BASE_URL=${KIMI_BASE_URL:-https://api.moonshot.cn/v1}
+      - KIMI_MODEL=${KIMI_MODEL:-moonshot-v1-8k}
+      - VOLCENGINE_TTS_API_KEY=${VOLCENGINE_TTS_API_KEY}
+      - VOLCENGINE_TTS_RESOURCE_ID=${VOLCENGINE_TTS_RESOURCE_ID:-volc.service_type.10029}
+      - VOLCENGINE_TTS_SPEAKER=${VOLCENGINE_TTS_SPEAKER:-zh_female_yueyunv_mars_bigtts}
+      - ADMIN_SECRET=${ADMIN_SECRET}
+      - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
+      - NEXT_PUBLIC_FEEDBACK_FORM_URL=${NEXT_PUBLIC_FEEDBACK_FORM_URL:-}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
