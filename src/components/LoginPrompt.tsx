@@ -1,15 +1,15 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { shouldPromptLogin, resetUsage } from "@/lib/usage-tracker";
+import AuthDialog from "./AuthDialog";
 
 export default function LoginPrompt() {
   const { user } = useAuth();
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
-  const router = useRouter();
+  const [showAuth, setShowAuth] = useState(false);
 
   // Show prompt after some usage, but only for unauthenticated users
   useEffect(() => {
@@ -30,8 +30,8 @@ export default function LoginPrompt() {
 
   const handleLogin = useCallback(() => {
     setVisible(false);
-    router.push("/login");
-  }, [router]);
+    setShowAuth(true);
+  }, []);
 
   if (!visible) return null;
 
@@ -83,6 +83,12 @@ export default function LoginPrompt() {
           </button>
         </div>
       </div>
+
+      {/* Auth Dialog (modal login/register) */}
+      <AuthDialog
+        open={showAuth}
+        onClose={() => setShowAuth(false)}
+      />
     </div>
   );
 }

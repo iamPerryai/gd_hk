@@ -7,6 +7,7 @@ import SceneFilter from "@/components/SceneFilter";
 import CardSwiper from "@/components/CardSwiper";
 import Footer from "@/components/Footer";
 import LoginPrompt from "@/components/LoginPrompt";
+import ProgressDashboard from "@/components/ProgressDashboard";
 import type { Scene } from "@/types/content";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +42,9 @@ export default async function HomePage({
   return (
     <div className="mx-auto max-w-2xl px-5 pb-20">
       <Header />
+
+      {/* 学习进度仪表盘 */}
+      <ProgressDashboard />
 
       {/* 今日学习卡片 */}
       {allItems.length > 0 && (

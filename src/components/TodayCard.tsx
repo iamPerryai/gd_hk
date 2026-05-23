@@ -2,9 +2,12 @@
 
 import { useState, useCallback } from "react";
 import AudioPlayer from "./AudioPlayer";
+import WaveformPlayer from "./WaveformPlayer";
 import FeedbackButtons from "./FeedbackButtons";
 import SyncedText, { collectKeywords, buildKeywordInfo } from "./SyncedText";
 import VoiceSelector from "./VoiceSelector";
+import FlashcardDialog, { type FlashcardItem } from "./FlashcardDialog";
+import ProgressiveBlur from "./ProgressiveBlur";
 import { useVoice } from "@/lib/voice-context";
 import { incrementUsage } from "@/lib/usage-tracker";
 import type { ContentListItem } from "@/types/content";
@@ -19,6 +22,7 @@ export default function TodayCard({
 }) {
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [showSupport, setShowSupport] = useState(false);
+  const [showFlashcard, setShowFlashcard] = useState(false);
   const [syncedAudio, setSyncedAudio] = useState<HTMLAudioElement | null>(null);
   const [timestamps, setTimestamps] = useState<TimestampEntry[] | null>(null);
   const [duration, setDuration] = useState(0);
@@ -59,11 +63,11 @@ export default function TodayCard({
   const allKeywords = collectKeywords(item.mainKeyword, item.supportKeywords);
   const keywordInfo = buildKeywordInfo(item.mainKeyword, item.supportKeywords);
 
-  const formatTime = (s: number) => {
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60);
-    return `${m}:${sec.toString().padStart(2, "0")}`;
-  };
+  // Build flashcard deck: main keyword first, then support keywords
+  const flashcardDeck: FlashcardItem[] = [
+    { word: mainKw.word, meaning: mainKw.meaning, ipa: mainKw.ipa, partOfSpeech: mainKw.partOfSpeech, example: mainKw.example },
+    ...supportKws.map((kw) => ({ word: kw.word, meaning: kw.meaning })),
+  ];
 
   const handleAudioReady = useCallback(
     (audioEl: HTMLAudioElement, ts: TimestampEntry[]) => {
@@ -106,6 +110,24 @@ export default function TodayCard({
     setIsPlaying(false);
     setCurrentTime(0);
   }, []);
+
+  const handlePlayPause = useCallback(() => {
+    if (!syncedAudio) return;
+    if (syncedAudio.paused) {
+      syncedAudio.play().catch(console.error);
+    } else {
+      syncedAudio.pause();
+    }
+  }, [syncedAudio]);
+
+  const handleSeek = useCallback(
+    (fraction: number) => {
+      if (syncedAudio && duration > 0) {
+        syncedAudio.currentTime = fraction * duration;
+      }
+    },
+    [syncedAudio, duration],
+  );
 
   const handleReplay = useCallback(() => {
     if (syncedAudio) {
@@ -158,6 +180,19 @@ export default function TodayCard({
               {currentIndex + 1}/{items.length}
             </span>
             <VoiceSelector />
+            <button
+              onClick={() => setShowFlashcard(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-xl border transition-all duration-300 text-[#4A7C59] border-[#4A7C59]/30 hover:bg-[#4A7C59]/10 hover:border-[#4A7C59]/50"
+              aria-label="闪卡模式"
+              title="闪卡模式 — 翻卡背单词"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <rect x="2" y="4" width="8" height="10" rx="1" />
+                <rect x="14" y="4" width="8" height="10" rx="1" />
+                <path d="M6 14l4 6M18 14l-4 6" />
+              </svg>
+              闪卡
+            </button>
             {supportKws.length > 0 && (
               <button
                 onClick={() => setShowSupport(!showSupport)}
@@ -210,46 +245,21 @@ export default function TodayCard({
 
         {/* ── Audio Player Bar ── */}
         <div className="mx-4 sm:mx-8 mb-4 bg-white/70 backdrop-blur-sm border border-[#E6E4DA] rounded-2xl p-4 sm:p-5 flex-shrink-0">
-          <div className="flex items-center gap-4">
-            <AudioPlayer
-              contentId={item.id}
-              speaker={currentVoice.id}
-              onReady={handleAudioReady}
-              onEnded={handleAudioEnded}
-            />
-
-            {/* Progress bar */}
-            <div className="flex-1 flex items-center gap-3">
-              <span className="text-xs font-mono text-[#9B9B9B] w-12 text-right tabular-nums">
-                {formatTime(currentTime)}
-              </span>
-              <div className="flex-1 h-2 bg-[#E6E4DA] rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[#4A7C59] rounded-full transition-all duration-100 ease-linear"
-                  style={{
-                    width: duration > 0 ? `${(currentTime / duration) * 100}%` : "0%",
-                  }}
-                />
-              </div>
-              <span className="text-xs font-mono text-[#9B9B9B] w-12 tabular-nums">
-                {duration > 0 ? formatTime(duration) : "--:--"}
-              </span>
-            </div>
-
-            {/* Replay button */}
-            {isPlaying && (
-              <button
-                onClick={handleReplay}
-                className="flex-shrink-0 p-2 text-[#9B9B9B] hover:text-[#4A4A4A] hover:bg-[#F0EFE9] rounded-xl transition-all duration-200"
-                aria-label="重播"
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M1 4v6h6M23 20v-6h-6" />
-                  <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
-                </svg>
-              </button>
-            )}
-          </div>
+          <AudioPlayer
+            contentId={item.id}
+            speaker={currentVoice.id}
+            hideButton
+            onReady={handleAudioReady}
+            onEnded={handleAudioEnded}
+          />
+          <WaveformPlayer
+            currentTime={currentTime}
+            duration={duration}
+            isPlaying={isPlaying}
+            onPlayPause={handlePlayPause}
+            onSeek={handleSeek}
+            onReplay={handleReplay}
+          />
         </div>
 
         {/* ── Main Keyword Card ── */}
@@ -288,9 +298,11 @@ export default function TodayCard({
 
         {/* ── Explanation ── */}
         <div className="mx-4 sm:mx-8 mb-4 flex-shrink-0">
-          <p className="text-sm sm:text-base leading-relaxed text-[#6B6B6B]">
-            {item.explanation}
-          </p>
+          <ProgressiveBlur maxHeight={120}>
+            <p className="text-sm sm:text-base leading-relaxed text-[#6B6B6B]">
+              {item.explanation}
+            </p>
+          </ProgressiveBlur>
         </div>
 
         {/* ── Divider + Feedback ── */}
@@ -298,6 +310,14 @@ export default function TodayCard({
           <FeedbackButtons contentId={item.id} />
         </div>
       </section>
+
+      {/* ── Flashcard Dialog ── */}
+      <FlashcardDialog
+        open={showFlashcard}
+        onClose={() => setShowFlashcard(false)}
+        title={`${item.scene} · 词汇闪卡`}
+        cards={flashcardDeck}
+      />
     </div>
   );
 }

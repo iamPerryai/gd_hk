@@ -7,6 +7,8 @@ interface AudioPlayerProps {
   contentId: string;
   size?: "sm" | "md";
   speaker?: string;
+  /** Hide the built-in play button (for external control via WaveformPlayer) */
+  hideButton?: boolean;
   /** Callback when audio is loaded with timestamps for synced text */
   onReady?: (audioEl: HTMLAudioElement, timestamps: TimestampEntry[]) => void;
   /** Callback when playback ends */
@@ -17,6 +19,7 @@ export default function AudioPlayer({
   contentId,
   size = "md",
   speaker,
+  hideButton = false,
   onReady,
   onEnded,
 }: AudioPlayerProps) {
@@ -167,6 +170,7 @@ export default function AudioPlayer({
 
   return (
     <span className="inline-flex items-center">
+      {!hideButton && (
       <button
         onClick={handleClick}
         disabled={status === "loading" && !blobUrlRef.current}
@@ -201,6 +205,7 @@ export default function AudioPlayer({
           <span className="absolute inset-0 rounded-full animate-ping opacity-20 bg-accent" />
         )}
       </button>
+      )}
       <audio ref={audioRef} onEnded={handleEnded} preload="auto" />
     </span>
   );

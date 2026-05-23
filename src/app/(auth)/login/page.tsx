@@ -5,34 +5,35 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { useAuth } from "@/lib/auth-context";
-
-const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
+import { useTurnstile } from "@/lib/use-turnstile";
 
 export default function LoginPage() {
+  const turnstileId = "login-turnstile";
   const router = useRouter();
   const { login } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string>("");
+  const turnstile = useTurnstile("login-page", turnstileId);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
-    if (SITE_KEY && !turnstileToken) {
+    if (turnstile.mustSolveBeforeSubmit && !turnstile.token) {
       setError("请完成人机验证");
       return;
     }
 
     setSubmitting(true);
 
-    const result = await login(username, password, turnstileToken || undefined);
+    const result = await login(username, password, turnstile.token || undefined);
     setSubmitting(false);
 
     if (result.error) {
       setError(result.error);
+      turnstile.setToken("");
     } else {
       router.push("/");
       router.refresh();
@@ -79,15 +80,25 @@ export default function LoginPage() {
           />
         </div>
 
-        {SITE_KEY && (
+        {turnstile.shouldRender && (
           <div className="flex justify-center">
             <Turnstile
-              siteKey={SITE_KEY}
-              onSuccess={setTurnstileToken}
-              onExpire={() => setTurnstileToken("")}
+              id={turnstileId}
+              siteKey={turnstile.siteKey}
+              onWidgetLoad={turnstile.markLoaded}
+              onSuccess={turnstile.setToken}
+              onExpire={() => turnstile.setToken("")}
+              onError={turnstile.markFailed}
+              onUnsupported={turnstile.markFailed}
+              onTimeout={turnstile.markFailed}
               options={{ theme: "light" }}
             />
           </div>
+        )}
+        {turnstile.loadFailed && (
+          <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-center">
+            人机验证暂时无法加载，已跳过验证
+          </p>
         )}
 
         {error && (
@@ -98,7 +109,7 @@ export default function LoginPage() {
 
         <button
           type="submit"
-          disabled={submitting || (!!SITE_KEY && !turnstileToken)}
+          disabled={submitting || (turnstile.mustSolveBeforeSubmit && !turnstile.token)}
           className="w-full py-3 bg-[#4A7C59] text-white font-semibold rounded-xl hover:bg-[#3D6B4B] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           {submitting ? "登录中..." : "登录"}
