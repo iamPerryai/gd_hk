@@ -1,0 +1,123 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── v0-inspired palette ── */
+  --color-app-bg: #F0EFE9;
+  --color-card-bg: #F7F6F0;
+  --color-text-primary: #2B2B2B;
+  --color-text-secondary: #6B6B6B;
+  --color-text-tertiary: #9B9B9B;
+  --color-accent: #4A7C59;
+  --color-accent-light: #E8F0EA;
+  --color-accent-dark: #3D6649;
+  --color-separator: #E6E4DA;
+  --color-hook: #8E8E8E;
+  --color-ipa: #4A7C59;
+  --color-yellow-highlight: #FBD68A;
+  --color-red-underline: #A94442;
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 8px 40px rgba(0, 0, 0, 0.10);
+  --shadow-hero: 0 8px 60px rgba(0, 0, 0, 0.08);
+}
+
+body {
+  background: var(--color-app-bg);
+  color: var(--color-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+    "PingFang HK", "Noto Sans TC", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ================================================================
+   Synced text — word-level audio synchronization
+   ================================================================ */
+
+/* Extra line-height so tooltip above keywords isn't clipped */
+.synced-text {
+  line-height: inherit;
+}
+
+/* Each word span — smooth transitions */
+.synced-word {
+  transition: all 0.15s ease;
+}
+
+/* ── Non-keyword active word (Chinese characters) — green highlight ── */
+.synced-active {
+  color: var(--color-accent) !important;
+  background: linear-gradient(180deg, transparent 55%, var(--color-accent-light) 55%);
+  padding: 0 3px;
+  border-radius: 2px;
+  font-weight: 700;
+  transform: scale(1.08);
+  display: inline-block;
+}
+
+/* ── Keyword (English word) base styles ── */
+.synced-word.keyword-highlight {
+  position: relative;
+  display: inline-block;
+  padding: 2px 6px;
+  margin: 0 2px;
+  font-weight: 600;
+  color: var(--color-accent-dark);
+  border-radius: 4px;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ── Tooltip above keyword: "词义 [IPA]" ── */
+.synced-word.keyword-highlight::before {
+  content: attr(data-tips);
+  position: absolute;
+  top: -2.2em;
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  font-size: 12px;
+  font-weight: 500;
+  color: #4a7c59;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Red underline below keyword ── */
+.synced-word.keyword-highlight::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  width: 0;
+  height: 2.5px;
+  background-color: #a94442;
+  transform: translateX(-50%);
+  transition: width 0.3s ease;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ACTIVE state — audio is currently reading this keyword
+   ════════════════════════════════════════════════════════════════ */
+
+/* Keyword active: yellow background */
+/* Use 'background' shorthand (not longhand) to also reset background-image
+   from the non-keyword .synced-active rule's linear-gradient. */
+.synced-word.keyword-highlight.synced-active {
+  background: #fbd68a;
+  color: #2b2b2b !important;
+  transform: none;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Keyword active: tooltip fades in + slides down */
+.synced-word.keyword-highlight.synced-active::before {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Keyword active: red underline expands from center */
+.synced-word.keyword-highlight.synced-active::after {
+  width: 100%;
+}
