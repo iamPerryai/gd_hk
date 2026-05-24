@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import type { TimestampEntry } from "@/lib/volcengine-tts";
 
 export interface KeywordInfo {
@@ -91,32 +91,40 @@ export default function SyncedText({
 }: SyncedTextProps) {
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const rafRef = useRef<number>(0);
+  const lastActiveRef = useRef<number | null>(null);
   const onEndedRef = useRef(onEnded);
   onEndedRef.current = onEnded;
 
-  // Build segments from timestamps, tagging keyword matches + tooltip data
-  const segments: Segment[] = timestamps.map((ts) => {
-    const isKeyword = keywords.some(
-      (k) => k.toLowerCase() === ts.text.toLowerCase(),
-    );
-    const info = keywordInfo[ts.text.toLowerCase()];
-    const tips = info
-      ? info.ipa
-        ? `${info.meaning} [${info.ipa}]`
-        : info.meaning
-      : "";
-    return {
-      text: ts.text,
-      start: ts.start_time,
-      end: ts.end_time,
-      isKeyword,
-      tips,
-    };
-  });
+  // O(1) keyword lookup set — memoized (H9 fix)
+  const keywordSet = useMemo(
+    () => new Set(keywords.map((k) => k.toLowerCase())),
+    [keywords],
+  );
+
+  // Build segments from timestamps once, not every frame (C7 fix)
+  const segments: Segment[] = useMemo(
+    () =>
+      timestamps.map((ts) => {
+        const lower = ts.text.toLowerCase();
+        const isKeyword = keywordSet.has(lower);
+        const info = keywordInfo[lower];
+        const tips = info
+          ? info.ipa
+            ? `${info.meaning} [${info.ipa}]`
+            : info.meaning
+          : "";
+        return {
+          text: ts.text,
+          start: ts.start_time,
+          end: ts.end_time,
+          isKeyword,
+          tips,
+        };
+      }),
+    [timestamps, keywordSet, keywordInfo],
+  );
 
   // Store segments in a ref so the RAF callback never needs to be re-created
-  // when segments change. This prevents the useEffect cleanup/setup churn
-  // that can cancel the RAF loop mid-flight.
   const segmentsRef = useRef(segments);
   segmentsRef.current = segments;
 
@@ -129,19 +137,25 @@ export default function SyncedText({
     for (let i = 0; i < segs.length; i++) {
       const seg = segs[i];
       if (ms >= seg.start && ms < seg.end) {
-        setActiveIdx(i);
-        // Continue the RAF loop — never return early
+        // C7 fix: only set state when value actually changes
+        if (lastActiveRef.current !== i) {
+          lastActiveRef.current = i;
+          setActiveIdx(i);
+        }
         rafRef.current = requestAnimationFrame(handleTimeUpdate);
         return;
       }
     }
 
     // After last segment
-    if (segs.length > 0 && ms >= segs[segs.length - 1].end) {
-      setActiveIdx(null);
-      onEndedRef.current?.();
-    } else {
-      setActiveIdx(null);
+    if (lastActiveRef.current !== null) {
+      lastActiveRef.current = null;
+      if (segs.length > 0 && ms >= segs[segs.length - 1].end) {
+        setActiveIdx(null);
+        onEndedRef.current?.();
+      } else {
+        setActiveIdx(null);
+      }
     }
 
     rafRef.current = requestAnimationFrame(handleTimeUpdate);
@@ -150,6 +164,7 @@ export default function SyncedText({
   // Wire up audio events and start/stop the RAF loop when audioEl changes
   useEffect(() => {
     if (!audioEl) return;
+    lastActiveRef.current = null;
 
     const onPlay = () => {
       rafRef.current = requestAnimationFrame(handleTimeUpdate);
@@ -159,6 +174,7 @@ export default function SyncedText({
     };
     const onEnded = () => {
       cancelAnimationFrame(rafRef.current);
+      lastActiveRef.current = null;
       setActiveIdx(null);
     };
 
@@ -166,9 +182,6 @@ export default function SyncedText({
     audioEl.addEventListener("pause", onPause);
     audioEl.addEventListener("ended", onEnded);
 
-    // If audio is already playing when this component mounts
-    // (e.g. onReady fires after play() has already started),
-    // kick off the RAF loop immediately.
     if (!audioEl.paused) {
       rafRef.current = requestAnimationFrame(handleTimeUpdate);
     }

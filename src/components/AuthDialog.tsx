@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { useAuth } from "@/lib/auth-context";
 import { useTurnstile } from "@/lib/use-turnstile";
@@ -22,7 +22,8 @@ export default function AuthDialog({ open, onClose, initialMode = "login" }: Aut
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
-  const turnstile = useTurnstile(`${open}-${mode}-${initialMode}`, turnstileId);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const turnstile = useTurnstile(`${open}-${mode}`, turnstileId);
 
   const handleClose = useCallback(() => {
     setError("");
@@ -44,43 +45,49 @@ export default function AuthDialog({ open, onClose, initialMode = "login" }: Aut
     turnstile.reset();
   }, [turnstile]);
 
-  const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      setError("");
+  // M18 fix: removed useCallback — deps (username, password, confirmPassword) change on
+  // every keystroke, defeating the purpose. Form values are read from state directly.
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
 
-      if (turnstile.mustSolveBeforeSubmit && !turnstile.token) {
-        setError("请完成人机验证");
-        return;
-      }
+    if (turnstile.mustSolveBeforeSubmit && !turnstile.token) {
+      setError("请完成人机验证");
+      return;
+    }
 
-      if (mode === "register" && password !== confirmPassword) {
-        setError("两次输入的密码不一致");
-        return;
-      }
+    if (mode === "register" && password !== confirmPassword) {
+      setError("两次输入的密码不一致");
+      return;
+    }
 
-      if (password.length < 4) {
-        setError("密码至少需要 4 个字符");
-        return;
-      }
+    if (password.length < 4) {
+      setError("密码至少需要 4 个字符");
+      return;
+    }
 
-      setSubmitting(true);
+    setSubmitting(true);
 
-      const action = mode === "login" ? login : register;
-      const result = await action(username, password, turnstile.token || undefined);
+    const action = mode === "login" ? login : register;
+    const result = await action(username, password, turnstile.token || undefined);
 
-      setSubmitting(false);
+    setSubmitting(false);
 
-      if (result.error) {
-        setError(result.error);
-        turnstile.setToken("");
-      } else {
-        setSuccess(true);
-        setTimeout(() => handleClose(), 1200);
-      }
-    },
-    [confirmPassword, handleClose, login, mode, password, register, turnstile, username],
-  );
+    if (result.error) {
+      setError(result.error);
+      turnstile.setToken("");
+    } else {
+      setSuccess(true);
+      successTimerRef.current = setTimeout(() => handleClose(), 1200);
+    }
+  }
+
+  // Clean up the success timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    };
+  }, []);
 
   return (
     <Dialog open={open} onClose={handleClose} className="max-w-sm">

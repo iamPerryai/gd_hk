@@ -29,6 +29,9 @@ export default function AudioPlayer({
   const blobUrlRef = useRef<string | null>(null);
   const pendingPlayRef = useRef(false);
   const readyCalledRef = useRef(false);
+  // Always track the latest onReady callback so prop changes are picked up (H10 fix)
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
 
   // Preload audio + timestamps on mount so play() can be called
   // synchronously in the click handler (required by browser autoplay policy).
@@ -79,9 +82,9 @@ export default function AudioPlayer({
         }
 
         // Notify parent of ready audio so external controls (e.g. WaveformPlayer) can drive playback
-        if (audio && onReady && !readyCalledRef.current) {
+        if (audio && onReadyRef.current && !readyCalledRef.current) {
           readyCalledRef.current = true;
-          onReady(audio, timestampsRef.current ?? []);
+          onReadyRef.current(audio, timestampsRef.current ?? []);
         }
 
         setStatus("idle");
@@ -94,9 +97,9 @@ export default function AudioPlayer({
             playPromise
               .then(() => {
                 setStatus("playing");
-                if (onReady && timestampsRef.current && !readyCalledRef.current) {
+                if (onReadyRef.current && timestampsRef.current && !readyCalledRef.current) {
                   readyCalledRef.current = true;
-                  onReady(audio, timestampsRef.current);
+                  onReadyRef.current(audio, timestampsRef.current);
                 }
               })
               .catch((err) => {
@@ -159,9 +162,9 @@ export default function AudioPlayer({
         .then(() => {
           setStatus("playing");
           // Notify parent AFTER play starts (avoids re-render interrupting playback)
-          if (onReady && timestampsRef.current && !readyCalledRef.current) {
+          if (onReadyRef.current && timestampsRef.current && !readyCalledRef.current) {
             readyCalledRef.current = true;
-            onReady(audio, timestampsRef.current);
+            onReadyRef.current(audio, timestampsRef.current);
           }
         })
         .catch((err) => {
@@ -169,7 +172,7 @@ export default function AudioPlayer({
           setStatus("idle");
         });
     }
-  }, [contentId, status, onReady]);
+  }, [status, onReadyRef]);
 
   const handleEnded = useCallback(() => {
     setStatus("idle");

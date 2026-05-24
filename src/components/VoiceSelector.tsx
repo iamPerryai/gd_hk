@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useVoice } from "@/lib/voice-context";
 
 export default function VoiceSelector() {
@@ -23,13 +23,16 @@ export default function VoiceSelector() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
-  const filtered = search
-    ? voices.filter(
-        (v) =>
-          v.name.includes(search) ||
-          v.description.includes(search)
-      )
-    : voices;
+  // Memoized case-insensitive search (M23 fix)
+  const filtered = useMemo(() => {
+    if (!search) return voices;
+    const q = search.toLowerCase();
+    return voices.filter(
+      (v) =>
+        v.name.toLowerCase().includes(q) ||
+        v.description.toLowerCase().includes(q),
+    );
+  }, [voices, search]);
 
   return (
     <div ref={containerRef} className="relative">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import AudioPlayer from "./AudioPlayer";
 import FeedbackButtons from "./FeedbackButtons";
 import SyncedText, { collectKeywords, buildKeywordInfo } from "./SyncedText";
@@ -18,8 +18,15 @@ export default function ContentCard({ item }: { item: ContentListItem }) {
     word: string; meaning: string; example?: string; ipa?: string; partOfSpeech?: string;
   };
   const supportKws = item.supportKeywords as Array<{ word: string; meaning: string }>;
-  const allKeywords = collectKeywords(item.mainKeyword, item.supportKeywords);
-  const keywordInfo = buildKeywordInfo(item.mainKeyword, item.supportKeywords);
+  // Memoize computed values (same pattern as TodayCard)
+  const allKeywords = useMemo(
+    () => collectKeywords(item.mainKeyword, item.supportKeywords),
+    [item.mainKeyword, item.supportKeywords],
+  );
+  const keywordInfo = useMemo(
+    () => buildKeywordInfo(item.mainKeyword, item.supportKeywords),
+    [item.mainKeyword, item.supportKeywords],
+  );
 
   const handleAudioReady = useCallback(
     (audioEl: HTMLAudioElement, ts: TimestampEntry[]) => {

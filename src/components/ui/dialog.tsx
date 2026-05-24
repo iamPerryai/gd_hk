@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type HTMLAttributes, type ReactNode } from "react";
+import { useEffect, useRef, useCallback, type HTMLAttributes, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface DialogProps {
@@ -12,11 +12,18 @@ interface DialogProps {
 
 export function Dialog({ open, onClose, children, className }: DialogProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  // Use ref to avoid effect re-execution when parent passes a new onClose (M fix)
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  const handleBackdropClick = useCallback(() => {
+    onCloseRef.current();
+  }, []);
 
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     };
     document.addEventListener("keydown", handler);
     document.body.style.overflow = "hidden";
@@ -24,7 +31,7 @@ export function Dialog({ open, onClose, children, className }: DialogProps) {
       document.removeEventListener("keydown", handler);
       document.body.style.overflow = "";
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
@@ -34,7 +41,7 @@ export function Dialog({ open, onClose, children, className }: DialogProps) {
       <div
         ref={overlayRef}
         className="absolute inset-0 bg-black/30 backdrop-blur-sm animate-in fade-in duration-200"
-        onClick={onClose}
+        onClick={handleBackdropClick}
       />
       {/* Content */}
       <div

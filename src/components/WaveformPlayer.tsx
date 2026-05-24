@@ -17,6 +17,12 @@ interface WaveformPlayerProps {
   onReplay?: () => void;
 }
 
+function formatTime(s: number) {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${sec.toString().padStart(2, "0")}`;
+}
+
 /** Generate pseudo-random waveform bar heights that look natural */
 function generateBars(count: number, seed: number): number[] {
   const bars: number[] = [];
@@ -79,12 +85,6 @@ export default function WaveformPlayer({
   const handlePointerUp = useCallback(() => {
     setIsDragging(false);
   }, []);
-
-  const formatTime = (s: number) => {
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60);
-    return `${m}:${sec.toString().padStart(2, "0")}`;
-  };
 
   return (
     <div className="w-full select-none">

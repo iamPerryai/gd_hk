@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import AudioPlayer from "./AudioPlayer";
 import WaveformPlayer from "./WaveformPlayer";
 import FeedbackButtons from "./FeedbackButtons";
@@ -60,20 +60,26 @@ export default function TodayCard({
     word: string; meaning: string; example?: string; ipa?: string; partOfSpeech?: string;
   };
   const supportKws = item.supportKeywords as Array<{ word: string; meaning: string }>;
-  const allKeywords = collectKeywords(item.mainKeyword, item.supportKeywords);
-  const keywordInfo = buildKeywordInfo(item.mainKeyword, item.supportKeywords);
 
-  // Build flashcard deck: main keyword first, then support keywords
-  const flashcardDeck: FlashcardItem[] = [
-    { word: mainKw.word, meaning: mainKw.meaning, ipa: mainKw.ipa, partOfSpeech: mainKw.partOfSpeech, example: mainKw.example },
-    ...supportKws.map((kw) => ({ word: kw.word, meaning: kw.meaning })),
-  ];
+  // Memoize computed values to avoid recalculation on audio time updates (M25 fix)
+  const allKeywords = useMemo(
+    () => collectKeywords(item.mainKeyword, item.supportKeywords),
+    [item.mainKeyword, item.supportKeywords],
+  );
+  const keywordInfo = useMemo(
+    () => buildKeywordInfo(item.mainKeyword, item.supportKeywords),
+    [item.mainKeyword, item.supportKeywords],
+  );
+  const flashcardDeck: FlashcardItem[] = useMemo(
+    () => [
+      { word: mainKw.word, meaning: mainKw.meaning, ipa: mainKw.ipa, partOfSpeech: mainKw.partOfSpeech, example: mainKw.example },
+      ...supportKws.map((kw) => ({ word: kw.word, meaning: kw.meaning })),
+    ],
+    [mainKw.word, mainKw.meaning, mainKw.ipa, mainKw.partOfSpeech, mainKw.example, supportKws],
+  );
 
   const handleAudioReady = useCallback(
     (audioEl: HTMLAudioElement, ts: TimestampEntry[]) => {
-      const prevCleanup = (audioEl as any).__todayCleanup;
-      if (prevCleanup) prevCleanup();
-
       setSyncedAudio(audioEl);
       setTimestamps(ts);
       setDuration(audioEl.duration || 0);
@@ -81,29 +87,35 @@ export default function TodayCard({
       setCurrentTime(audioEl.currentTime);
       // Track usage for soft login prompt
       incrementUsage();
-
-      const onTime = () => setCurrentTime(audioEl.currentTime);
-      const onPlay = () => setIsPlaying(true);
-      const onPause = () => setIsPlaying(false);
-      const onEnd = () => {
-        setIsPlaying(false);
-        setCurrentTime(0);
-      };
-
-      audioEl.addEventListener("timeupdate", onTime);
-      audioEl.addEventListener("play", onPlay);
-      audioEl.addEventListener("pause", onPause);
-      audioEl.addEventListener("ended", onEnd);
-
-      (audioEl as any).__todayCleanup = () => {
-        audioEl.removeEventListener("timeupdate", onTime);
-        audioEl.removeEventListener("play", onPlay);
-        audioEl.removeEventListener("pause", onPause);
-        audioEl.removeEventListener("ended", onEnd);
-      };
     },
     [],
   );
+
+  // H11 fix: use proper useEffect for event listeners instead of __todayCleanup
+  useEffect(() => {
+    const audio = syncedAudio;
+    if (!audio) return;
+
+    const onTime = () => setCurrentTime(audio.currentTime);
+    const onPlay = () => setIsPlaying(true);
+    const onPause = () => setIsPlaying(false);
+    const onEnd = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+    };
+
+    audio.addEventListener("timeupdate", onTime);
+    audio.addEventListener("play", onPlay);
+    audio.addEventListener("pause", onPause);
+    audio.addEventListener("ended", onEnd);
+
+    return () => {
+      audio.removeEventListener("timeupdate", onTime);
+      audio.removeEventListener("play", onPlay);
+      audio.removeEventListener("pause", onPause);
+      audio.removeEventListener("ended", onEnd);
+    };
+  }, [syncedAudio]);
 
   const handleAudioEnded = useCallback(() => {
     setSyncedAudio(null);

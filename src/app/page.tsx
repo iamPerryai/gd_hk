@@ -19,13 +19,35 @@ export default async function HomePage({
 }) {
   const { scene } = await searchParams;
 
-  const where = and(
+  const conditions = [
     eq(contents.reviewStatus, "published"),
     eq(contents.audioStatus, "approved"),
-  );
+  ];
+  // Push scene filter to DB (M21 fix)
+  if (scene) {
+    conditions.push(eq(contents.scene, scene));
+  }
+  const where = and(...conditions);
 
+  // Select only needed columns — avoid pulling large JSONB blobs (M20 fix)
   const allItems = await db
-    .select()
+    .select({
+      id: contents.id,
+      contentNo: contents.contentNo,
+      scene: contents.scene,
+      hookText: contents.hookText,
+      cantoneseText: contents.cantoneseText,
+      explanation: contents.explanation,
+      mainKeyword: contents.mainKeyword,
+      supportKeywords: contents.supportKeywords,
+      tags: contents.tags,
+      audioUrl: contents.audioUrl,
+      audioStatus: contents.audioStatus,
+      reviewStatus: contents.reviewStatus,
+      isToday: contents.isToday,
+      sortOrder: contents.sortOrder,
+      createdAt: contents.createdAt,
+    })
     .from(contents)
     .where(where)
     .orderBy(asc(contents.sortOrder));
@@ -35,9 +57,8 @@ export default async function HomePage({
     allItems.findIndex((item) => item.isToday),
   );
 
-  const filteredItems = scene
-    ? allItems.filter((item) => item.scene === scene)
-    : allItems;
+  // Scene filtering now done at DB level — no JS-side filter needed
+  const filteredItems = allItems;
 
   return (
     <div className="mx-auto max-w-2xl px-5 pb-20">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Dialog } from "./ui/dialog";
 
 export interface FlashcardItem {
@@ -46,13 +46,19 @@ export default function FlashcardDialog({
     [],
   );
 
+  // M26 fix: use refs so prev/next have stable identities — keyboard effect won't rebind on navigation
+  const cardsLenRef = useRef(cards.length);
+  cardsLenRef.current = cards.length;
+
   const prev = useCallback(() => {
-    goTo(currentIndex > 0 ? currentIndex - 1 : cards.length - 1);
-  }, [currentIndex, cards.length, goTo]);
+    setFlipped(false);
+    setCurrentIndex((i) => (i > 0 ? i - 1 : cardsLenRef.current - 1));
+  }, []);
 
   const next = useCallback(() => {
-    goTo(currentIndex < cards.length - 1 ? currentIndex + 1 : 0);
-  }, [currentIndex, cards.length, goTo]);
+    setFlipped(false);
+    setCurrentIndex((i) => (i < cardsLenRef.current - 1 ? i + 1 : 0));
+  }, []);
 
   const toggleFlip = useCallback(() => {
     setFlipped((v) => !v);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useMemo } from "react";
 
 interface Orb {
   id: number;
@@ -44,14 +44,34 @@ interface AnimatedOrbsProps {
 }
 
 export default function AnimatedOrbs({ count = 5, className = "" }: AnimatedOrbsProps) {
-  const [orbs, setOrbs] = useState<Orb[]>([]);
+  // Initialize directly — no need for useEffect + empty initial state (M22 fix)
+  const [orbs] = useState<Orb[]>(() => generateOrbs(42, count));
 
-  useEffect(() => {
-    // Use a fixed seed so orbs are stable
-    setOrbs(generateOrbs(42, count));
-  }, [count]);
-
-  if (orbs.length === 0) return null;
+  // Memoize keyframes string to avoid rebuilding on every render (M22 fix)
+  const keyframes = useMemo(
+    () =>
+      orbs
+        .map(
+          (orb) => `
+          @keyframes orb-float-${orb.id} {
+            0%, 100% {
+              transform: translate(-50%, -50%) translate(0px, 0px) scale(1);
+            }
+            25% {
+              transform: translate(-50%, -50%) translate(${orb.speedX * 40}px, ${orb.speedY * 40}px) scale(1.08);
+            }
+            50% {
+              transform: translate(-50%, -50%) translate(${-orb.speedX * 30}px, ${-orb.speedY * 20}px) scale(0.95);
+            }
+            75% {
+              transform: translate(-50%, -50%) translate(${orb.speedY * 30}px, ${-orb.speedX * 35}px) scale(1.04);
+            }
+          }
+        `,
+        )
+        .join("\n"),
+    [orbs],
+  );
 
   return (
     <div
@@ -74,29 +94,7 @@ export default function AnimatedOrbs({ count = 5, className = "" }: AnimatedOrbs
         />
       ))}
 
-      {/* Inject keyframes once */}
-      <style jsx>{`
-        ${orbs
-          .map(
-            (orb) => `
-          @keyframes orb-float-${orb.id} {
-            0%, 100% {
-              transform: translate(-50%, -50%) translate(0px, 0px) scale(1);
-            }
-            25% {
-              transform: translate(-50%, -50%) translate(${orb.speedX * 40}px, ${orb.speedY * 40}px) scale(1.08);
-            }
-            50% {
-              transform: translate(-50%, -50%) translate(${-orb.speedX * 30}px, ${-orb.speedY * 20}px) scale(0.95);
-            }
-            75% {
-              transform: translate(-50%, -50%) translate(${orb.speedY * 30}px, ${-orb.speedX * 35}px) scale(1.04);
-            }
-          }
-        `,
-          )
-          .join("\n")}
-      `}</style>
+      <style jsx>{keyframes}</style>
     </div>
   );
 }

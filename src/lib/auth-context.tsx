@@ -25,15 +25,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch current user on mount
+  // Fetch current user on mount with cancellation (M11 fix)
   useEffect(() => {
-    fetch("/api/auth/me")
+    const ac = new AbortController();
+    fetch("/api/auth/me", { signal: ac.signal })
       .then((res) => res.json())
       .then((data) => {
-        if (data.user) setUser(data.user);
+        if (!ac.signal.aborted && data.user) setUser(data.user);
       })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+      })
+      .finally(() => {
+        if (!ac.signal.aborted) setLoading(false);
+      });
+    return () => ac.abort();
   }, []);
 
   const login = useCallback(async (username: string, password: string, turnstileToken?: string) => {

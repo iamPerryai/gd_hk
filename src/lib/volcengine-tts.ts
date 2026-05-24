@@ -21,6 +21,13 @@ interface TTSOptions {
   speaker?: string;
 }
 
+// Exponential backoff configuration (C6 fix)
+const POLL_INITIAL_DELAY_MS = 300;
+const POLL_MAX_DELAY_MS = 3000;
+const POLL_BACKOFF_FACTOR = 1.5;
+const POLL_MAX_ATTEMPTS = 20;
+const AUDIO_DOWNLOAD_TIMEOUT_MS = 15000;
+
 export async function synthesizeSpeech(options: TTSOptions): Promise<TTSResult> {
   const { text, speaker } = options;
   const apiKey = process.env.VOLCENGINE_TTS_API_KEY!;
@@ -78,16 +85,16 @@ export async function synthesizeSpeech(options: TTSOptions): Promise<TTSResult> 
     throw new Error("No task_id in Volcengine submit response");
   }
 
-  // Step 2: Poll for completion
+  // Step 2: Poll for completion with exponential backoff (C6 fix)
   const queryBody = {
     task_id: taskId,
   };
 
   let attempts = 0;
-  const maxAttempts = 30; // 30 * 1s = 30s max wait
+  let delay = POLL_INITIAL_DELAY_MS;
 
-  while (attempts < maxAttempts) {
-    await sleep(1000);
+  while (attempts < POLL_MAX_ATTEMPTS) {
+    await sleep(delay);
     attempts++;
 
     const queryResp = await fetch(
@@ -131,18 +138,26 @@ export async function synthesizeSpeech(options: TTSOptions): Promise<TTSResult> 
         throw new Error("No audio_url in Volcengine response");
       }
 
-      const audioResp = await fetch(audioUrl);
-      if (!audioResp.ok) {
-        throw new Error(`Failed to download audio: ${audioResp.status}`);
+      // Add timeout to audio download (C6 fix)
+      const ac = new AbortController();
+      const timeoutId = setTimeout(() => ac.abort(), AUDIO_DOWNLOAD_TIMEOUT_MS);
+      try {
+        const audioResp = await fetch(audioUrl, { signal: ac.signal });
+        if (!audioResp.ok) {
+          throw new Error(`Failed to download audio: ${audioResp.status}`);
+        }
+        const audioBuffer = await audioResp.arrayBuffer();
+        return { audioBuffer, timestamps };
+      } finally {
+        clearTimeout(timeoutId);
       }
-
-      const audioBuffer = await audioResp.arrayBuffer();
-
-      return { audioBuffer, timestamps };
     }
+
+    // Exponential backoff with cap
+    delay = Math.min(delay * POLL_BACKOFF_FACTOR, POLL_MAX_DELAY_MS);
   }
 
-  throw new Error(`Volcengine TTS timed out after ${maxAttempts} attempts`);
+  throw new Error(`Volcengine TTS timed out after ${POLL_MAX_ATTEMPTS} attempts (${(POLL_MAX_ATTEMPTS * POLL_MAX_DELAY_MS) / 1000}s max)`);
 }
 
 function parseTimestampsFromSentences(
@@ -173,10 +188,10 @@ function sleep(ms: number): Promise<void> {
 }
 
 function randomUUID(): string {
-  // Simple RFC4122 v4 UUID generation
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+  return crypto.randomUUID?.() ??
+    "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+      const r = Math.floor(Math.random() * 16);
+      const v = c === "x" ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
 }

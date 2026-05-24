@@ -31,9 +31,6 @@ export default function CircularProgress({
   const clampedValue = Math.max(0, Math.min(100, value));
   const offset = circumference - (clampedValue / 100) * circumference;
 
-  // Extract the actual CSS color value for the ring
-  const ringColor = "currentColor";
-
   return (
     <div className="flex flex-col items-center gap-2">
       <div className="relative" style={{ width: size, height: size }}>
