@@ -191,7 +191,7 @@ export default function AuthDialog({ open, onClose, initialMode = "login" }: Aut
                 />
               </div>
             )}
-            {turnstile.loadFailed && (
+            {turnstile.loadFailed && process.env.NODE_ENV !== "development" && (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-center text-xs text-amber-600">
                 人机验证暂时无法加载，已跳过验证
               </p>

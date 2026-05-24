@@ -28,6 +28,7 @@ export default function AudioPlayer({
   const timestampsRef = useRef<TimestampEntry[] | null>(null);
   const blobUrlRef = useRef<string | null>(null);
   const pendingPlayRef = useRef(false);
+  const readyCalledRef = useRef(false);
 
   // Preload audio + timestamps on mount so play() can be called
   // synchronously in the click handler (required by browser autoplay policy).
@@ -77,6 +78,12 @@ export default function AudioPlayer({
           audio.load();
         }
 
+        // Notify parent of ready audio so external controls (e.g. WaveformPlayer) can drive playback
+        if (audio && onReady && !readyCalledRef.current) {
+          readyCalledRef.current = true;
+          onReady(audio, timestampsRef.current ?? []);
+        }
+
         setStatus("idle");
 
         // If user clicked play while still loading, auto-play now
@@ -87,7 +94,8 @@ export default function AudioPlayer({
             playPromise
               .then(() => {
                 setStatus("playing");
-                if (onReady && timestampsRef.current) {
+                if (onReady && timestampsRef.current && !readyCalledRef.current) {
+                  readyCalledRef.current = true;
                   onReady(audio, timestampsRef.current);
                 }
               })
@@ -109,6 +117,7 @@ export default function AudioPlayer({
 
     return () => {
       cancelled = true;
+      readyCalledRef.current = false;
       if (blobUrlRef.current) {
         URL.revokeObjectURL(blobUrlRef.current);
         blobUrlRef.current = null;
@@ -150,7 +159,8 @@ export default function AudioPlayer({
         .then(() => {
           setStatus("playing");
           // Notify parent AFTER play starts (avoids re-render interrupting playback)
-          if (onReady && timestampsRef.current) {
+          if (onReady && timestampsRef.current && !readyCalledRef.current) {
+            readyCalledRef.current = true;
             onReady(audio, timestampsRef.current);
           }
         })

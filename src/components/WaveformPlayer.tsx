@@ -41,7 +41,11 @@ export default function WaveformPlayer({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const barCount = 64;
-  const bars = useRef(generateBars(barCount, 42));
+  // Lazy-initialize bars on client only to avoid SSR/CSR floating-point mismatch
+  const [bars, setBars] = useState<number[]>([]);
+  useEffect(() => {
+    setBars(generateBars(barCount, 42));
+  }, []);
 
   const progress = duration > 0 ? currentTime / duration : 0;
 
@@ -117,7 +121,7 @@ export default function WaveformPlayer({
           onPointerUp={handlePointerUp}
         >
           {/* Bars */}
-          {bars.current.map((height, i) => {
+          {bars.map((height, i) => {
             const barProgress = i / barCount;
             const isPlayed = barProgress <= progress;
             // Calculate dynamic height: base height + playing animation

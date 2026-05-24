@@ -124,7 +124,7 @@ export default function RegisterPage() {
             />
           </div>
         )}
-        {turnstile.loadFailed && (
+        {turnstile.loadFailed && process.env.NODE_ENV !== "development" && (
           <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-center">
             人机验证暂时无法加载，已跳过验证
           </p>
